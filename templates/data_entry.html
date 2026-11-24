@@ -1,0 +1,270 @@
+{% extends "base.html" %}
+{% block title %}Data Entry{% endblock %}
+{% block page_title %}Data Entry{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-xl-10">
+    <div class="card p-4 mb-4">
+      <h5 class="fw-700 mb-1" style="font-weight:700;color:#0f172a;">
+        <i class="bi bi-pencil-square me-2 text-primary"></i>Record Meal Data
+      </h5>
+      <p class="text-muted mb-4" style="font-size:13px;">Enter meal service data for training and analysis. All fields marked * are required.</p>
+
+      <form id="data-entry-form" novalidate>
+        <div class="row g-3">
+
+          <!-- Date -->
+          <div class="col-md-4">
+            <label class="form-label fw-semibold">Date <span class="text-danger">*</span></label>
+            <input type="date" class="form-control" id="entry-date" name="date" required />
+          </div>
+
+          <!-- Day of Week (auto) -->
+          <div class="col-md-4">
+            <label class="form-label fw-semibold">Day of Week</label>
+            <select class="form-select" id="entry-dow" name="day_of_week" required>
+              <option value="0">Monday</option>
+              <option value="1">Tuesday</option>
+              <option value="2">Wednesday</option>
+              <option value="3">Thursday</option>
+              <option value="4">Friday</option>
+              <option value="5">Saturday</option>
+              <option value="6">Sunday</option>
+            </select>
+            <div class="form-text">Auto-filled from date</div>
+          </div>
+
+          <!-- Month (readonly) -->
+          <div class="col-md-4">
+            <label class="form-label fw-semibold">Month</label>
+            <input type="text" class="form-control" id="entry-month-display" readonly placeholder="Auto-filled" />
+            <input type="hidden" id="entry-month" name="month" />
+          </div>
+
+          <!-- Meal Type -->
+          <div class="col-md-4">
+            <label class="form-label fw-semibold">Meal Type <span class="text-danger">*</span></label>
+            <select class="form-select" id="entry-meal-type" name="meal_type" required>
+              <option value="">Select meal type</option>
+              <option value="0">Breakfast</option>
+              <option value="1">Lunch</option>
+              <option value="2">Dinner</option>
+            </select>
+          </div>
+
+          <!-- Weather -->
+          <div class="col-md-4">
+            <label class="form-label fw-semibold">Weather <span class="text-danger">*</span></label>
+            <select class="form-select" id="entry-weather" name="weather" required>
+              <option value="">Select weather</option>
+              <option value="0">☀️ Sunny</option>
+              <option value="1">☁️ Cloudy</option>
+              <option value="2">🌧️ Rainy</option>
+            </select>
+          </div>
+
+          <!-- Special Event -->
+          <div class="col-md-4 d-flex align-items-center">
+            <div class="form-check form-switch mt-4">
+              <input class="form-check-input" type="checkbox" id="entry-is-event" name="is_event" role="switch" />
+              <label class="form-check-label fw-semibold" for="entry-is-event">Is Special Event?</label>
+            </div>
+          </div>
+
+          <!-- Temperature -->
+          <div class="col-md-4">
+            <label class="form-label fw-semibold">Temperature (°C) <span class="text-danger">*</span></label>
+            <input type="number" class="form-control" id="entry-temp" name="temperature" min="0" max="50" step="0.1" placeholder="e.g. 28.5" required />
+          </div>
+
+          <!-- Number of Staff -->
+          <div class="col-md-4">
+            <label class="form-label fw-semibold">Number of Staff <span class="text-danger">*</span></label>
+            <input type="number" class="form-control" id="entry-staff" name="num_staff" min="1" max="100" placeholder="e.g. 15" required />
+          </div>
+
+          <!-- Expected Customers -->
+          <div class="col-md-4">
+            <label class="form-label fw-semibold">Expected Customers <span class="text-danger">*</span></label>
+            <input type="number" class="form-control" id="entry-customers" name="num_customers_expected" min="1" max="1000" placeholder="e.g. 200" required />
+          </div>
+
+          <!-- Actual Meals Served -->
+          <div class="col-md-6">
+            <label class="form-label fw-semibold">Actual Meals Served <span class="text-danger">*</span></label>
+            <div class="input-group">
+              <span class="input-group-text"><i class="bi bi-egg-fried"></i></span>
+              <input type="number" class="form-control" id="entry-actual-meals" name="actual_meals" min="0" placeholder="e.g. 185" required />
+            </div>
+          </div>
+
+          <!-- Actual Food Waste -->
+          <div class="col-md-6">
+            <label class="form-label fw-semibold">Actual Food Waste (kg) <span class="text-danger">*</span></label>
+            <div class="input-group">
+              <span class="input-group-text"><i class="bi bi-trash"></i></span>
+              <input type="number" class="form-control" id="entry-actual-waste" name="actual_waste" min="0" step="0.1" placeholder="e.g. 12.5" required />
+              <span class="input-group-text">kg</span>
+            </div>
+          </div>
+
+        </div><!-- /row -->
+
+        <div class="d-flex gap-2 mt-4 flex-wrap">
+          <button type="submit" class="btn btn-success px-4" style="background:#10b981;border-color:#10b981;">
+            <i class="bi bi-save me-2"></i>Save Record
+          </button>
+          <button type="button" id="btn-get-prediction" class="btn btn-outline-primary px-4">
+            <i class="bi bi-lightning-charge me-2"></i>Get Prediction
+          </button>
+          <button type="reset" class="btn btn-outline-secondary px-4">
+            <i class="bi bi-arrow-counterclockwise me-2"></i>Reset
+          </button>
+        </div>
+      </form>
+    </div>
+
+    <!-- Prediction result box -->
+    <div id="prediction-result-box" class="card p-4 d-none">
+      <h6 class="fw-bold mb-3"><i class="bi bi-lightning-charge-fill text-warning me-2"></i>Prediction Results</h6>
+      <div class="row g-3" id="prediction-values">
+        <div class="col-md-6">
+          <div class="p-3 rounded-3" style="background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.25);">
+            <div class="text-muted" style="font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;">Predicted Meals</div>
+            <div id="pred-meals-val" class="mt-1" style="font-size:32px;font-weight:800;color:#10b981;">—</div>
+          </div>
+        </div>
+        <div class="col-md-6">
+          <div class="p-3 rounded-3" style="background:rgba(249,115,22,0.08);border:1px solid rgba(249,115,22,0.25);">
+            <div class="text-muted" style="font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;">Predicted Waste</div>
+            <div id="pred-waste-val" class="mt-1" style="font-size:32px;font-weight:800;color:#f97316;">— kg</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// ---- Date auto-fill logic ----
+const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+
+function updateDateFields(dateStr) {
+  if (!dateStr) return;
+  const d = new Date(dateStr + 'T00:00:00');
+  // getDay(): 0=Sun, 1=Mon...6=Sat → convert to 0=Mon...6=Sun
+  const jsDay = d.getDay();
+  const appDay = (jsDay === 0) ? 6 : jsDay - 1;
+  document.getElementById('entry-dow').value = appDay;
+  const month = d.getMonth() + 1;
+  document.getElementById('entry-month').value = month;
+  document.getElementById('entry-month-display').value = MONTHS[month - 1];
+}
+
+// Set default date to today
+(function() {
+  const dateInput = document.getElementById('entry-date');
+  const today = new Date();
+  const yyyy = today.getFullYear();
+  const mm = String(today.getMonth() + 1).padStart(2,'0');
+  const dd = String(today.getDate()).padStart(2,'0');
+  dateInput.value = `${yyyy}-${mm}-${dd}`;
+  updateDateFields(dateInput.value);
+})();
+
+document.getElementById('entry-date').addEventListener('change', function() {
+  updateDateFields(this.value);
+});
+
+// ---- Collect form data ----
+function collectFormData(includeActuals) {
+  const f = (id) => document.getElementById(id);
+  const dow = parseInt(f('entry-dow').value);
+  const data = {
+    date:                   f('entry-date').value,
+    day_of_week:            dow,
+    month:                  parseInt(f('entry-month').value),
+    is_weekend:             dow >= 5 ? 1 : 0,
+    meal_type:              parseInt(f('entry-meal-type').value),
+    weather:                parseInt(f('entry-weather').value),
+    is_event:               f('entry-is-event').checked ? 1 : 0,
+    temperature:            parseFloat(f('entry-temp').value),
+    num_staff:              parseInt(f('entry-staff').value),
+    num_customers_expected: parseInt(f('entry-customers').value),
+  };
+  if (includeActuals) {
+    data.actual_meals = parseFloat(f('entry-actual-meals').value);
+    data.actual_waste = parseFloat(f('entry-actual-waste').value);
+  }
+  return data;
+}
+
+// ---- Submit form ----
+document.getElementById('data-entry-form').addEventListener('submit', async function(e) {
+  e.preventDefault();
+  if (!this.checkValidity()) {
+    this.classList.add('was-validated');
+    return;
+  }
+  const data = collectFormData(true);
+  try {
+    const res = await fetch('/data-entry', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    const result = await res.json();
+    if (result.success) {
+      window.showToast('✅ ' + (result.message || 'Record saved successfully!'), 'success');
+      this.reset();
+      // Re-set today's date
+      const dateInput = document.getElementById('entry-date');
+      const today = new Date();
+      dateInput.value = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
+      updateDateFields(dateInput.value);
+      this.classList.remove('was-validated');
+    } else {
+      window.showToast('❌ ' + (result.message || 'Failed to save record.'), 'danger');
+    }
+  } catch(err) {
+    window.showToast('❌ Network error: ' + err.message, 'danger');
+  }
+});
+
+// ---- Get Prediction ----
+document.getElementById('btn-get-prediction').addEventListener('click', async function() {
+  const mealType = document.getElementById('entry-meal-type').value;
+  const weather  = document.getElementById('entry-weather').value;
+  const temp     = document.getElementById('entry-temp').value;
+  const staff    = document.getElementById('entry-staff').value;
+  const cust     = document.getElementById('entry-customers').value;
+  if (!mealType || !weather || !temp || !staff || !cust) {
+    window.showToast('⚠️ Please fill Meal Type, Weather, Temperature, Staff, and Customers first.', 'warning');
+    return;
+  }
+  const data = collectFormData(false);
+  this.disabled = true;
+  this.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Predicting…';
+  try {
+    const res = await fetch('/predict', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    const result = await res.json();
+    document.getElementById('pred-meals-val').textContent = (result.meals_pred ?? result.meals ?? '—');
+    document.getElementById('pred-waste-val').textContent = (result.waste_pred ?? result.waste ?? '—') + ' kg';
+    document.getElementById('prediction-result-box').classList.remove('d-none');
+  } catch(err) {
+    window.showToast('❌ Prediction failed: ' + err.message, 'danger');
+  } finally {
+    this.disabled = false;
+    this.innerHTML = '<i class="bi bi-lightning-charge me-2"></i>Get Prediction';
+  }
+});
+</script>
+{% endblock %}

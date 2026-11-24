@@ -1,0 +1,317 @@
+{% extends "base.html" %}
+{% block title %}Predict Demand &amp; Waste{% endblock %}
+{% block page_title %}Predict Demand &amp; Waste{% endblock %}
+
+{% block content %}
+<div class="row g-4">
+
+  <!-- Left: Input form (col-5) -->
+  <div class="col-xl-5">
+    <div class="card p-4 h-100">
+      <h6 style="font-weight:700;color:#0f172a;" class="mb-1">
+        <i class="bi bi-sliders me-2 text-primary"></i>Prediction Inputs
+      </h6>
+      <p class="text-muted mb-3" style="font-size:12px;">Fill in the details below to get AI-powered meal demand and waste predictions.</p>
+
+      <form id="predict-form" novalidate>
+
+        <!-- Date -->
+        <div class="mb-3">
+          <label class="form-label fw-semibold" style="font-size:13px;">Date <span class="text-danger">*</span></label>
+          <input type="date" class="form-control form-control-sm" id="p-date" name="date" required />
+        </div>
+
+        <!-- Day of Week (auto) -->
+        <div class="mb-3">
+          <label class="form-label fw-semibold" style="font-size:13px;">Day of Week</label>
+          <select class="form-select form-select-sm" id="p-dow" name="day_of_week">
+            <option value="0">Monday</option>
+            <option value="1">Tuesday</option>
+            <option value="2">Wednesday</option>
+            <option value="3">Thursday</option>
+            <option value="4">Friday</option>
+            <option value="5">Saturday</option>
+            <option value="6">Sunday</option>
+          </select>
+        </div>
+
+        <input type="hidden" id="p-month" name="month" />
+
+        <!-- Meal Type -->
+        <div class="mb-3">
+          <label class="form-label fw-semibold" style="font-size:13px;">Meal Type <span class="text-danger">*</span></label>
+          <select class="form-select form-select-sm" id="p-meal-type" name="meal_type" required>
+            <option value="">Select…</option>
+            <option value="0">Breakfast</option>
+            <option value="1">Lunch</option>
+            <option value="2">Dinner</option>
+          </select>
+        </div>
+
+        <!-- Weather -->
+        <div class="mb-3">
+          <label class="form-label fw-semibold" style="font-size:13px;">Weather <span class="text-danger">*</span></label>
+          <select class="form-select form-select-sm" id="p-weather" name="weather" required>
+            <option value="">Select…</option>
+            <option value="0">☀️ Sunny</option>
+            <option value="1">☁️ Cloudy</option>
+            <option value="2">🌧️ Rainy</option>
+          </select>
+        </div>
+
+        <!-- Special Event toggle -->
+        <div class="mb-3">
+          <div class="form-check form-switch">
+            <input class="form-check-input" type="checkbox" id="p-is-event" name="is_event" role="switch" />
+            <label class="form-check-label fw-semibold" style="font-size:13px;" for="p-is-event">Special Event Day</label>
+          </div>
+        </div>
+
+        <!-- Temperature -->
+        <div class="mb-3">
+          <label class="form-label fw-semibold" style="font-size:13px;">Temperature (°C) <span class="text-danger">*</span></label>
+          <input type="number" class="form-control form-control-sm" id="p-temp" name="temperature" min="0" max="50" step="0.1" placeholder="e.g. 28.5" required />
+        </div>
+
+        <!-- Staff -->
+        <div class="mb-3">
+          <label class="form-label fw-semibold" style="font-size:13px;">Number of Staff <span class="text-danger">*</span></label>
+          <input type="number" class="form-control form-control-sm" id="p-staff" name="num_staff" min="1" max="100" placeholder="e.g. 15" required />
+        </div>
+
+        <!-- Expected Customers -->
+        <div class="mb-3">
+          <label class="form-label fw-semibold" style="font-size:13px;">Expected Customers <span class="text-danger">*</span></label>
+          <input type="number" class="form-control form-control-sm" id="p-customers" name="num_customers_expected" min="1" max="1000" placeholder="e.g. 200" required />
+        </div>
+
+        <button type="submit" class="btn btn-primary w-100 mt-1" style="background:linear-gradient(135deg,#38bdf8,#8b5cf6);border:none;font-weight:600;">
+          <i class="bi bi-lightning-charge-fill me-2"></i>Predict Now
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Right: Results panel (col-7) -->
+  <div class="col-xl-7">
+    <div class="card p-4 h-100" id="results-panel">
+
+      <!-- Empty state -->
+      <div id="results-empty" class="d-flex flex-column align-items-center justify-content-center h-100 text-center py-5">
+        <i class="bi bi-lightning-charge" style="font-size:56px;color:#cbd5e1;"></i>
+        <div style="font-size:17px;font-weight:600;color:#94a3b8;margin-top:16px;">Enter values and click Predict</div>
+        <div style="font-size:13px;color:#cbd5e1;margin-top:6px;">Results will appear here instantly</div>
+      </div>
+
+      <!-- Loading spinner -->
+      <div id="results-loading" class="d-none d-flex flex-column align-items-center justify-content-center h-100 py-5">
+        <div class="spinner-border text-primary" style="width:3rem;height:3rem;" role="status"></div>
+        <div style="font-size:14px;color:#64748b;margin-top:16px;">Computing predictions…</div>
+      </div>
+
+      <!-- Results content -->
+      <div id="results-content" class="d-none">
+        <h6 style="font-weight:700;color:#0f172a;" class="mb-3">
+          <i class="bi bi-stars text-warning me-2"></i>Prediction Results
+        </h6>
+
+        <!-- Two metric boxes -->
+        <div class="row g-3 mb-4">
+          <div class="col-6">
+            <div class="p-3 rounded-3 text-center" style="background:rgba(16,185,129,0.08);border:1.5px solid rgba(16,185,129,0.25);">
+              <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#10b981;">Predicted Meals</div>
+              <div id="res-meals" style="font-size:40px;font-weight:800;color:#10b981;line-height:1.1;margin:8px 0;">—</div>
+              <div style="font-size:11px;color:#64748b;">servings</div>
+            </div>
+          </div>
+          <div class="col-6">
+            <div class="p-3 rounded-3 text-center" style="background:rgba(249,115,22,0.08);border:1.5px solid rgba(249,115,22,0.25);">
+              <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#f97316;">Predicted Waste</div>
+              <div id="res-waste" style="font-size:40px;font-weight:800;color:#f97316;line-height:1.1;margin:8px 0;">—</div>
+              <div style="font-size:11px;color:#64748b;">kilograms</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Key factors -->
+        <div class="mb-4">
+          <div style="font-size:13px;font-weight:700;color:#0f172a;margin-bottom:8px;">Key Influencing Factors</div>
+          <ul class="mb-0" id="key-factors-list" style="font-size:13px;color:#475569;padding-left:18px;"></ul>
+        </div>
+
+        <!-- Feature contributions chart -->
+        <div>
+          <div style="font-size:13px;font-weight:700;color:#0f172a;margin-bottom:10px;">Feature Contributions (Meals Model)</div>
+          <canvas id="featureChart" height="180"></canvas>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let featureChart = null;
+let featureImportanceData = null;
+
+// ---- Date init ----
+(function() {
+  const dateInput = document.getElementById('p-date');
+  const today = new Date();
+  dateInput.value = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
+  updateDateFields(dateInput.value);
+  dateInput.addEventListener('change', () => updateDateFields(dateInput.value));
+})();
+
+function updateDateFields(dateStr) {
+  if (!dateStr) return;
+  const d = new Date(dateStr + 'T00:00:00');
+  const jsDay = d.getDay();
+  const appDay = jsDay === 0 ? 6 : jsDay - 1;
+  document.getElementById('p-dow').value   = appDay;
+  document.getElementById('p-month').value = d.getMonth() + 1;
+}
+
+// ---- Load feature importance from /api/performance ----
+(async function() {
+  try {
+    const res = await fetch('/api/performance');
+    const data = await res.json();
+    featureImportanceData = data.feature_importance || null;
+  } catch(e) {
+    console.warn('Could not load performance data', e);
+  }
+})();
+
+// ---- Predict ----
+document.getElementById('predict-form').addEventListener('submit', async function(e) {
+  e.preventDefault();
+  if (!this.checkValidity()) {
+    this.classList.add('was-validated');
+    return;
+  }
+
+  document.getElementById('results-empty').classList.add('d-none');
+  document.getElementById('results-content').classList.add('d-none');
+  document.getElementById('results-loading').classList.remove('d-none');
+
+  const dow = parseInt(document.getElementById('p-dow').value);
+  const payload = {
+    date:                   document.getElementById('p-date').value,
+    day_of_week:            dow,
+    month:                  parseInt(document.getElementById('p-month').value) || (new Date().getMonth()+1),
+    is_weekend:             dow >= 5 ? 1 : 0,
+    meal_type:              parseInt(document.getElementById('p-meal-type').value),
+    weather:                parseInt(document.getElementById('p-weather').value),
+    is_event:               document.getElementById('p-is-event').checked ? 1 : 0,
+    temperature:            parseFloat(document.getElementById('p-temp').value),
+    num_staff:              parseInt(document.getElementById('p-staff').value),
+    num_customers_expected: parseInt(document.getElementById('p-customers').value),
+  };
+
+  try {
+    const res = await fetch('/predict', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const result = await res.json();
+
+    document.getElementById('results-loading').classList.add('d-none');
+    document.getElementById('results-content').classList.remove('d-none');
+
+    const meals = result.meals_pred ?? result.meals ?? 0;
+    const waste = result.waste_pred ?? result.waste ?? 0;
+
+    document.getElementById('res-meals').textContent = Math.round(meals);
+    document.getElementById('res-waste').textContent = parseFloat(waste).toFixed(1);
+
+    // Key factors
+    const factorsList = document.getElementById('key-factors-list');
+    const isEvent = payload.is_event;
+    const isWeekend = payload.day_of_week >= 5;
+    const weatherMap = { 0: 'Sunny', 1: 'Cloudy', 2: 'Rainy' };
+    const mealMap = { 0: 'Breakfast', 1: 'Lunch', 2: 'Dinner' };
+    factorsList.innerHTML = [
+      `<li>Expected customers (<strong>${payload.num_customers_expected}</strong>) is the primary driver of meal demand.</li>`,
+      `<li>${isEvent ? '🎉 Special event detected — increased demand expected.' : 'No special event today — normal demand pattern.'}</li>`,
+      `<li>${isWeekend ? '📅 Weekend — typically higher footfall.' : '📅 Weekday — standard service day.'}</li>`,
+      `<li>Weather is <strong>${weatherMap[payload.weather]}</strong> — ${payload.weather === 2 ? 'rainy weather may reduce walk-ins.' : 'favourable conditions for normal demand.'}</li>`,
+      `<li>Meal type: <strong>${mealMap[payload.meal_type]}</strong> — ${payload.meal_type === 1 ? 'Lunch typically has highest demand.' : 'Standard service expected.'}</li>`,
+    ].join('');
+
+    // Feature chart
+    renderFeatureChart(payload, featureImportanceData);
+
+  } catch(err) {
+    document.getElementById('results-loading').classList.add('d-none');
+    document.getElementById('results-empty').classList.remove('d-none');
+    window.showToast('❌ Prediction failed: ' + err.message, 'danger');
+  }
+});
+
+function renderFeatureChart(payload, importance) {
+  const featureLabels = ['Day of Week','Month','Is Weekend','Meal Type','Weather','Is Event','Temperature','Num Staff','Customers Expected'];
+  const featureKeys   = ['day_of_week','month','is_weekend','meal_type','weather','is_event','temperature','num_staff','num_customers_expected'];
+
+  let contributions;
+  const mealImportance = importance ? (importance.meal_importance || importance.meals) : null;
+  if (mealImportance && typeof mealImportance === 'object' && !Array.isArray(mealImportance)) {
+    contributions = featureKeys.map(k => {
+      const coef = mealImportance[k] ?? 0;
+      const val  = k === 'is_weekend' ? (payload.day_of_week >= 5 ? 1 : 0) : (payload[k] ?? 0);
+      return coef * val;
+    });
+  } else if (mealImportance && Array.isArray(mealImportance)) {
+    contributions = featureKeys.map((k, i) => {
+      const coef = mealImportance[i] ?? 0;
+      const val  = k === 'is_weekend' ? (payload.day_of_week >= 5 ? 1 : 0) : (payload[k] ?? 0);
+      return coef * val;
+    });
+  } else {
+    // Fallback: heuristic contributions
+    contributions = [
+      payload.day_of_week * 2,
+      payload.month * 0.5,
+      (payload.day_of_week >= 5 ? 1 : 0) * 10,
+      payload.meal_type * 5,
+      payload.weather * -4,
+      payload.is_event * 20,
+      payload.temperature * 0.3,
+      payload.num_staff * 1.2,
+      payload.num_customers_expected * 0.8,
+    ];
+  }
+
+  const ctx = document.getElementById('featureChart').getContext('2d');
+  if (featureChart) featureChart.destroy();
+  featureChart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: featureLabels,
+      datasets: [{
+        label: 'Contribution to Meals Prediction',
+        data: contributions,
+        backgroundColor: contributions.map(v => v >= 0 ? 'rgba(16,185,129,0.7)' : 'rgba(239,68,68,0.7)'),
+        borderRadius: 4,
+        borderSkipped: false,
+      }]
+    },
+    options: {
+      indexAxis: 'y',
+      responsive: true,
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { label: ctx => ` ${ctx.parsed.x.toFixed(2)}` } }
+      },
+      scales: {
+        x: { grid: { color: '#f1f5f9' }, ticks: { font: { family: 'Inter', size: 10 } } },
+        y: { grid: { display: false },   ticks: { font: { family: 'Inter', size: 10 } } }
+      }
+    }
+  });
+}
+</script>
+{% endblock %}

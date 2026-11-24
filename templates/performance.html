@@ -1,0 +1,426 @@
+{% extends "base.html" %}
+{% block title %}Model Performance{% endblock %}
+{% block page_title %}Model Performance & Analytics{% endblock %}
+
+{% block content %}
+<!-- Overview / Retrain Header -->
+<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+  <div>
+    <h5 class="mb-1 text-slate-800 fw-bold">Multiple Linear Regression Models</h5>
+    <p class="text-muted mb-0 small">
+      Two independent regression models trained chronologically (80/20 train-test split, zero data leakage). Test metrics reflect honest out-of-sample evaluation.
+    </p>
+  </div>
+  <div>
+    <button id="btn-retrain" class="btn btn-primary-custom d-flex align-items-center gap-2">
+      <i class="bi bi-arrow-repeat" id="retrain-icon"></i>
+      <span id="retrain-text">Retrain Models from Database</span>
+    </button>
+  </div>
+</div>
+
+<!-- Section 1: Model Metric Cards -->
+<div class="row g-3 mb-4">
+  <!-- Meals Model Card -->
+  <div class="col-lg-6">
+    <div class="model-card h-100">
+      <div class="d-flex justify-content-between align-items-start mb-3">
+        <div>
+          <span class="badge bg-success-subtle text-success border border-success-subtle mb-2">Model 1: Target Variable</span>
+          <h5 class="fw-bold mb-1"><i class="bi bi-egg-fried text-success me-2"></i>Meals Consumed Demand Model</h5>
+          <p class="text-secondary small mb-0">Algorithm: Multiple Linear Regression (Ordinary Least Squares)</p>
+        </div>
+        <span class="badge bg-primary text-white px-2 py-1 small">Test Set (20%)</span>
+      </div>
+
+      <div class="row g-2 text-center mt-2">
+        <div class="col-4">
+          <div class="p-3 rounded bg-light border">
+            <div class="text-secondary small fw-medium">R² Score</div>
+            <div class="fs-4 fw-bold text-success" id="meals-r2">—</div>
+            <div class="small text-muted">Variance Explained</div>
+          </div>
+        </div>
+        <div class="col-4">
+          <div class="p-3 rounded bg-light border">
+            <div class="text-secondary small fw-medium">MAE</div>
+            <div class="fs-4 fw-bold text-primary" id="meals-mae">—</div>
+            <div class="small text-muted">Meals Error</div>
+          </div>
+        </div>
+        <div class="col-4">
+          <div class="p-3 rounded bg-light border">
+            <div class="text-secondary small fw-medium">RMSE</div>
+            <div class="fs-4 fw-bold text-warning" id="meals-rmse">—</div>
+            <div class="small text-muted">Root Mean Sq Err</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="mt-3 p-2 rounded bg-light small text-secondary">
+        <i class="bi bi-info-circle me-1 text-primary"></i> <strong>Features used:</strong> day of week, month, weekend flag, meal type, weather, event, temp, staff count, expected customers.
+      </div>
+    </div>
+  </div>
+
+  <!-- Food Waste Model Card -->
+  <div class="col-lg-6">
+    <div class="model-card h-100">
+      <div class="d-flex justify-content-between align-items-start mb-3">
+        <div>
+          <span class="badge bg-warning-subtle text-warning border border-warning-subtle mb-2">Model 2: Target Variable</span>
+          <h5 class="fw-bold mb-1"><i class="bi bi-trash text-warning me-2"></i>Food Waste Prediction Model (kg)</h5>
+          <p class="text-secondary small mb-0">Algorithm: Multiple Linear Regression (Ordinary Least Squares)</p>
+        </div>
+        <span class="badge bg-primary text-white px-2 py-1 small">Test Set (20%)</span>
+      </div>
+
+      <div class="row g-2 text-center mt-2">
+        <div class="col-4">
+          <div class="p-3 rounded bg-light border">
+            <div class="text-secondary small fw-medium">R² Score</div>
+            <div class="fs-4 fw-bold text-success" id="waste-r2">—</div>
+            <div class="small text-muted">Variance Explained</div>
+          </div>
+        </div>
+        <div class="col-4">
+          <div class="p-3 rounded bg-light border">
+            <div class="text-secondary small fw-medium">MAE</div>
+            <div class="fs-4 fw-bold text-primary" id="waste-mae">—</div>
+            <div class="small text-muted">kg Waste Error</div>
+          </div>
+        </div>
+        <div class="col-4">
+          <div class="p-3 rounded bg-light border">
+            <div class="text-secondary small fw-medium">RMSE</div>
+            <div class="fs-4 fw-bold text-warning" id="waste-rmse">—</div>
+            <div class="small text-muted">Root Mean Sq Err</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="mt-3 p-2 rounded bg-light small text-secondary">
+        <i class="bi bi-info-circle me-1 text-warning"></i> <strong>Features used:</strong> Same inputs standard-scaled with train-only parameters, learning unconsumed food variance.
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Section 2: Actual vs Predicted Charts -->
+<div class="row g-3 mb-4">
+  <div class="col-lg-6">
+    <div class="chart-card">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <div class="chart-title mb-0"><i class="bi bi-scatter-chart text-success me-2"></i>Actual vs Predicted: Meals Consumed</div>
+        <span class="badge bg-light text-secondary border">Sample Test Set</span>
+      </div>
+      <p class="text-muted small mb-2">Points closer to the diagonal reference line indicate higher predictive accuracy.</p>
+      <div style="position: relative; height: 320px;">
+        <canvas id="mealsAvpChart"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-6">
+    <div class="chart-card">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <div class="chart-title mb-0"><i class="bi bi-scatter-chart text-warning me-2"></i>Actual vs Predicted: Food Waste (kg)</div>
+        <span class="badge bg-light text-secondary border">Sample Test Set</span>
+      </div>
+      <p class="text-muted small mb-2">Comparison of true test waste vs linear regression predictions.</p>
+      <div style="position: relative; height: 320px;">
+        <canvas id="wasteAvpChart"></canvas>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Section 3: Feature Coefficients (Importance) -->
+<div class="row g-3 mb-4">
+  <div class="col-lg-6">
+    <div class="chart-card">
+      <div class="chart-title"><i class="bi bi-bar-chart-steps text-primary me-2"></i>Meals Model Feature Coefficients</div>
+      <p class="text-muted small mb-3">Standardized regression coefficients showing positive or negative impact on meal demand.</p>
+      <div style="position: relative; height: 280px;">
+        <canvas id="mealsCoefChart"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-6">
+    <div class="chart-card">
+      <div class="chart-title"><i class="bi bi-bar-chart-steps text-purple me-2"></i>Waste Model Feature Coefficients</div>
+      <p class="text-muted small mb-3">Standardized coefficients indicating feature weights on kilograms of food wasted.</p>
+      <div style="position: relative; height: 280px;">
+        <canvas id="wasteCoefChart"></canvas>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Methodology / Explainability Card -->
+<div class="chart-card mb-4">
+  <h6 class="fw-bold mb-2"><i class="bi bi-journal-code text-info me-2"></i>Rigorous ML Pipeline & Methodology</h6>
+  <div class="row g-3 text-secondary small">
+    <div class="col-md-4">
+      <strong class="text-dark d-block mb-1">1. Chronological Splitting</strong>
+      Data is strictly split 80% train and 20% test chronologically by timestamp, mimicking real-world production forecasting without temporal lookahead bias.
+    </div>
+    <div class="col-md-4">
+      <strong class="text-dark d-block mb-1">2. Zero Data Leakage</strong>
+      Preprocessing scalers (<span class="font-monospace">StandardScaler</span>) are fitted solely on training data and then transformed across validation/test sets and live production inputs.
+    </div>
+    <div class="col-md-4">
+      <strong class="text-dark d-block mb-1">3. Dual Separate Models</strong>
+      Two distinct instances of <span class="font-monospace">sklearn.linear_model.LinearRegression</span> are trained separately so demand and waste dynamics are learned independently.
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let mealsAvpInstance = null;
+let wasteAvpInstance = null;
+let mealsCoefInstance = null;
+let wasteCoefInstance = null;
+
+async function loadPerformanceData() {
+  try {
+    const res = await fetch('/api/performance');
+    if (!res.ok) throw new Error('Failed to fetch performance data');
+    const data = await res.json();
+
+    // Populate Metrics
+    const mm = data.meal_metrics || {};
+    const wm = data.waste_metrics || {};
+
+    document.getElementById('meals-r2').textContent = mm.r2 !== undefined ? mm.r2.toFixed(3) : '—';
+    document.getElementById('meals-mae').textContent = mm.mae !== undefined ? mm.mae.toFixed(2) : '—';
+    document.getElementById('meals-rmse').textContent = mm.rmse !== undefined ? mm.rmse.toFixed(2) : '—';
+
+    document.getElementById('waste-r2').textContent = wm.r2 !== undefined ? wm.r2.toFixed(3) : '—';
+    document.getElementById('waste-mae').textContent = wm.mae !== undefined ? wm.mae.toFixed(2) + ' kg' : '—';
+    document.getElementById('waste-rmse').textContent = wm.rmse !== undefined ? wm.rmse.toFixed(2) + ' kg' : '—';
+
+    // 1. Meals AvP Chart
+    renderAvpChart(
+      'mealsAvpChart',
+      data.actual_vs_predicted_meals || [],
+      'Meals Consumed',
+      '#10b981',
+      inst => mealsAvpInstance = inst,
+      mealsAvpInstance
+    );
+
+    // 2. Waste AvP Chart
+    renderAvpChart(
+      'wasteAvpChart',
+      data.actual_vs_predicted_waste || [],
+      'Food Waste (kg)',
+      '#f59e0b',
+      inst => wasteAvpInstance = inst,
+      wasteAvpInstance
+    );
+
+    // 3. Feature Importance Charts
+    const fi = data.feature_importance || {};
+    const featureLabels = {
+      'day_of_week': 'Day of Week',
+      'month': 'Month',
+      'is_weekend': 'Weekend Flag',
+      'meal_type': 'Meal Type',
+      'weather': 'Weather',
+      'is_event': 'Special Event',
+      'temperature': 'Temperature',
+      'num_staff': 'Staff Count',
+      'num_customers_expected': 'Expected Customers'
+    };
+
+    renderCoefChart(
+      'mealsCoefChart',
+      fi.meal_importance || {},
+      featureLabels,
+      '#38bdf8',
+      inst => mealsCoefInstance = inst,
+      mealsCoefInstance
+    );
+
+    renderCoefChart(
+      'wasteCoefChart',
+      fi.waste_importance || {},
+      featureLabels,
+      '#8b5cf6',
+      inst => wasteCoefInstance = inst,
+      wasteCoefInstance
+    );
+
+  } catch (err) {
+    console.error('Error loading performance data:', err);
+    if (window.showToast) window.showToast('Failed to load performance metrics', 'danger');
+  }
+}
+
+function renderAvpChart(canvasId, pairs, label, pointColor, setInst, currentInst) {
+  const ctx = document.getElementById(canvasId).getContext('2d');
+  if (currentInst) currentInst.destroy();
+
+  const scatterData = pairs.map(p => ({ x: p.actual, y: p.predicted }));
+  
+  // Calculate min/max for 45-degree line
+  let minVal = Infinity, maxVal = -Infinity;
+  pairs.forEach(p => {
+    minVal = Math.min(minVal, p.actual, p.predicted);
+    maxVal = Math.max(maxVal, p.actual, p.predicted);
+  });
+  if (minVal === Infinity) { minVal = 0; maxVal = 100; }
+  const pad = (maxVal - minVal) * 0.05;
+  minVal = Math.max(0, minVal - pad);
+  maxVal = maxVal + pad;
+
+  const lineData = [
+    { x: minVal, y: minVal },
+    { x: maxVal, y: maxVal }
+  ];
+
+  const chart = new Chart(ctx, {
+    type: 'scatter',
+    data: {
+      datasets: [
+        {
+          label: 'Test Predictions',
+          data: scatterData,
+          backgroundColor: pointColor,
+          borderColor: pointColor,
+          pointRadius: 4,
+          pointHoverRadius: 6
+        },
+        {
+          label: 'Perfect Fit (y = x)',
+          data: lineData,
+          type: 'line',
+          borderColor: '#94a3b8',
+          borderWidth: 1.5,
+          borderDash: [5, 5],
+          pointRadius: 0,
+          fill: false
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'top', labels: { boxWidth: 12 } },
+        tooltip: {
+          callbacks: {
+            label: function(ctx) {
+              if (ctx.datasetIndex === 0) {
+                return `Actual: ${ctx.parsed.x.toFixed(1)}, Predicted: ${ctx.parsed.y.toFixed(1)}`;
+              }
+              return 'Reference line';
+            }
+          }
+        }
+      },
+      scales: {
+        x: {
+          title: { display: true, text: `Actual ${label}`, color: '#64748b' },
+          grid: { color: '#f1f5f9' },
+          min: minVal,
+          max: maxVal
+        },
+        y: {
+          title: { display: true, text: `Predicted ${label}`, color: '#64748b' },
+          grid: { color: '#f1f5f9' },
+          min: minVal,
+          max: maxVal
+        }
+      }
+    }
+  });
+
+  setInst(chart);
+}
+
+function renderCoefChart(canvasId, coefDict, labelMap, barColor, setInst, currentInst) {
+  const ctx = document.getElementById(canvasId).getContext('2d');
+  if (currentInst) currentInst.destroy();
+
+  const keys = Object.keys(coefDict);
+  const labels = keys.map(k => labelMap[k] || k);
+  const values = keys.map(k => coefDict[k]);
+
+  const bgColors = values.map(v => v >= 0 ? barColor : '#ef4444');
+
+  const chart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: labels,
+      datasets: [{
+        label: 'Coefficient Value',
+        data: values,
+        backgroundColor: bgColors,
+        borderRadius: 4
+      }]
+    },
+    options: {
+      indexAxis: 'y',
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: (ctx) => `Weight: ${ctx.parsed.x.toFixed(3)}`
+          }
+        }
+      },
+      scales: {
+        x: {
+          grid: { color: '#f1f5f9' },
+          title: { display: true, text: 'Standardized Coefficient Weight', color: '#64748b' }
+        },
+        y: {
+          grid: { display: false }
+        }
+      }
+    }
+  });
+
+  setInst(chart);
+}
+
+// Retrain Button Handler
+document.getElementById('btn-retrain').addEventListener('click', async function() {
+  const btn = this;
+  const icon = document.getElementById('retrain-icon');
+  const text = document.getElementById('retrain-text');
+  
+  btn.disabled = true;
+  icon.classList.add('loading-spinner');
+  text.textContent = 'Retraining Models...';
+
+  try {
+    const res = await fetch('/api/retrain', { method: 'POST' });
+    const data = await res.json();
+    if (data.success) {
+      if (window.showToast) window.showToast('Models successfully retrained on current database!', 'success');
+      await loadPerformanceData();
+    } else {
+      if (window.showToast) window.showToast(data.message || 'Retraining failed', 'danger');
+    }
+  } catch (err) {
+    console.error('Retrain error:', err);
+    if (window.showToast) window.showToast('Network error during retraining', 'danger');
+  } finally {
+    btn.disabled = false;
+    icon.classList.remove('loading-spinner');
+    text.textContent = 'Retrain Models from Database';
+  }
+});
+
+// Load on page ready
+document.addEventListener('DOMContentLoaded', loadPerformanceData);
+</script>
+{% endblock %}

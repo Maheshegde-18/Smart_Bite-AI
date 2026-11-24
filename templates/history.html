@@ -1,0 +1,293 @@
+{% extends "base.html" %}
+{% block title %}Historical Records{% endblock %}
+{% block page_title %}Historical Records{% endblock %}
+
+{% block content %}
+
+<!-- Filter bar -->
+<div class="card p-3 mb-4">
+  <div class="row g-2 align-items-end">
+    <div class="col-sm-auto">
+      <label class="form-label mb-1" style="font-size:12px;font-weight:600;">From Date</label>
+      <input type="date" class="form-control form-control-sm" id="filter-from" />
+    </div>
+    <div class="col-sm-auto">
+      <label class="form-label mb-1" style="font-size:12px;font-weight:600;">To Date</label>
+      <input type="date" class="form-control form-control-sm" id="filter-to" />
+    </div>
+    <div class="col-sm-auto">
+      <label class="form-label mb-1" style="font-size:12px;font-weight:600;">Meal Type</label>
+      <select class="form-select form-select-sm" id="filter-meal-type" style="min-width:120px;">
+        <option value="">All</option>
+        <option value="0">Breakfast</option>
+        <option value="1">Lunch</option>
+        <option value="2">Dinner</option>
+      </select>
+    </div>
+    <div class="col-sm-auto">
+      <label class="form-label mb-1" style="font-size:12px;font-weight:600;">Weather</label>
+      <select class="form-select form-select-sm" id="filter-weather" style="min-width:110px;">
+        <option value="">All</option>
+        <option value="0">Sunny</option>
+        <option value="1">Cloudy</option>
+        <option value="2">Rainy</option>
+      </select>
+    </div>
+    <div class="col-sm-auto">
+      <button class="btn btn-primary btn-sm px-3" id="btn-filter" style="margin-top:0;">
+        <i class="bi bi-funnel me-1"></i>Filter
+      </button>
+    </div>
+    <div class="col-sm-auto">
+      <button class="btn btn-outline-secondary btn-sm px-3" id="btn-reset-filter">
+        <i class="bi bi-x-circle me-1"></i>Reset
+      </button>
+    </div>
+    <div class="col-sm-auto ms-auto">
+      <button class="btn btn-outline-success btn-sm px-3" id="btn-export-csv">
+        <i class="bi bi-download me-1"></i>Export CSV
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Table card -->
+<div class="card p-0 overflow-hidden">
+  <div class="d-flex justify-content-between align-items-center px-4 py-3" style="border-bottom:1px solid #f1f5f9;">
+    <span style="font-size:14px;font-weight:600;color:#0f172a;">
+      <i class="bi bi-clock-history me-2 text-primary"></i>All Records
+    </span>
+    <span id="record-count-badge" class="badge bg-primary rounded-pill" style="font-size:12px;">Loading…</span>
+  </div>
+
+  <!-- Loading -->
+  <div id="table-loading" class="text-center py-5">
+    <div class="spinner-border text-primary" role="status" style="width:2.5rem;height:2.5rem;"></div>
+    <div class="mt-2 text-muted" style="font-size:13px;">Loading records…</div>
+  </div>
+
+  <!-- Table -->
+  <div id="table-container" class="d-none" style="overflow-x:auto;">
+    <table class="table table-striped table-hover table-sm mb-0" id="history-table">
+      <thead style="background:#f8fafc;position:sticky;top:0;z-index:1;">
+        <tr style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:#64748b;border-bottom:2px solid #e2e8f0;">
+          <th class="px-3 py-2">Date</th>
+          <th class="px-2 py-2">Day</th>
+          <th class="px-2 py-2">Meal Type</th>
+          <th class="px-2 py-2">Weather</th>
+          <th class="px-2 py-2">Event</th>
+          <th class="px-2 py-2">Temp °C</th>
+          <th class="px-2 py-2">Staff</th>
+          <th class="px-2 py-2">Expected</th>
+          <th class="px-2 py-2">Actual Meals</th>
+          <th class="px-2 py-2">Actual Waste</th>
+          <th class="px-2 py-2">Pred Meals</th>
+          <th class="px-2 py-2">Pred Waste</th>
+          <th class="px-2 py-2">Created</th>
+        </tr>
+      </thead>
+      <tbody id="history-tbody"></tbody>
+    </table>
+  </div>
+
+  <!-- Empty state -->
+  <div id="table-empty" class="d-none text-center py-5">
+    <i class="bi bi-inbox" style="font-size:48px;color:#cbd5e1;"></i>
+    <div style="font-size:15px;font-weight:600;color:#94a3b8;margin-top:12px;">No records found</div>
+    <div style="font-size:13px;color:#cbd5e1;">Try adjusting your filters</div>
+  </div>
+
+  <!-- Pagination -->
+  <div class="d-flex justify-content-between align-items-center px-4 py-3" style="border-top:1px solid #f1f5f9;" id="pagination-container">
+    <div id="pagination-info" style="font-size:12px;color:#64748b;"></div>
+    <nav aria-label="History pagination">
+      <ul class="pagination pagination-sm mb-0" id="pagination-ul"></ul>
+    </nav>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+const DAYS_MAP = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+const MEAL_MAP = { 0: 'Breakfast', 1: 'Lunch', 2: 'Dinner' };
+const WEATHER_MAP = { 0: '☀️ Sunny', 1: '☁️ Cloudy', 2: '🌧️ Rainy' };
+const PAGE_SIZE = 25;
+
+let allRecords = [];
+let filteredRecords = [];
+let currentPage = 1;
+
+// ---- Load records ----
+async function loadHistory() {
+  try {
+    const res = await fetch('/api/history');
+    allRecords = await res.json();
+    filteredRecords = [...allRecords];
+    renderTable();
+  } catch(err) {
+    document.getElementById('table-loading').classList.add('d-none');
+    document.getElementById('table-empty').classList.remove('d-none');
+    console.error('Failed to load history', err);
+  }
+}
+
+// ---- Filter ----
+document.getElementById('btn-filter').addEventListener('click', applyFilter);
+document.getElementById('btn-reset-filter').addEventListener('click', () => {
+  document.getElementById('filter-from').value = '';
+  document.getElementById('filter-to').value   = '';
+  document.getElementById('filter-meal-type').value = '';
+  document.getElementById('filter-weather').value   = '';
+  filteredRecords = [...allRecords];
+  currentPage = 1;
+  renderTable();
+});
+
+function applyFilter() {
+  const fromDate = document.getElementById('filter-from').value;
+  const toDate   = document.getElementById('filter-to').value;
+  const mealType = document.getElementById('filter-meal-type').value;
+  const weather  = document.getElementById('filter-weather').value;
+
+  filteredRecords = allRecords.filter(r => {
+    if (fromDate && r.date < fromDate) return false;
+    if (toDate   && r.date > toDate)   return false;
+    if (mealType !== '' && String(r.meal_type) !== mealType) return false;
+    if (weather  !== '' && String(r.weather)   !== weather)  return false;
+    return true;
+  });
+  currentPage = 1;
+  renderTable();
+}
+
+// ---- Render table ----
+function renderTable() {
+  document.getElementById('table-loading').classList.add('d-none');
+  const tbody = document.getElementById('history-tbody');
+  tbody.innerHTML = '';
+
+  if (filteredRecords.length === 0) {
+    document.getElementById('table-container').classList.add('d-none');
+    document.getElementById('table-empty').classList.remove('d-none');
+    document.getElementById('record-count-badge').textContent = '0 records';
+    document.getElementById('pagination-info').textContent = '';
+    document.getElementById('pagination-ul').innerHTML = '';
+    return;
+  }
+
+  document.getElementById('table-empty').classList.add('d-none');
+  document.getElementById('table-container').classList.remove('d-none');
+  document.getElementById('record-count-badge').textContent = filteredRecords.length.toLocaleString() + ' records';
+
+  const totalPages = Math.ceil(filteredRecords.length / PAGE_SIZE);
+  const start = (currentPage - 1) * PAGE_SIZE;
+  const slice = filteredRecords.slice(start, start + PAGE_SIZE);
+
+  document.getElementById('pagination-info').textContent =
+    `Showing ${start + 1}–${Math.min(start + PAGE_SIZE, filteredRecords.length)} of ${filteredRecords.length}`;
+
+  slice.forEach(r => {
+    const waste = parseFloat(r.actual_waste ?? 0);
+    let rowClass = '';
+    if (waste > 20) rowClass = 'table-danger';
+    else if (waste < 5 && waste >= 0) rowClass = 'table-success';
+
+    const tr = document.createElement('tr');
+    tr.className = rowClass;
+    tr.style.fontSize = '12px';
+    tr.innerHTML = `
+      <td class="px-3 py-1 fw-semibold">${r.date || '—'}</td>
+      <td class="px-2 py-1">${DAYS_MAP[r.day_of_week] || '—'}</td>
+      <td class="px-2 py-1">${MEAL_MAP[r.meal_type] || '—'}</td>
+      <td class="px-2 py-1">${WEATHER_MAP[r.weather] || '—'}</td>
+      <td class="px-2 py-1">${r.is_event ? '<span class="badge bg-warning text-dark">Yes</span>' : '<span class="badge bg-secondary">No</span>'}</td>
+      <td class="px-2 py-1">${r.temperature != null ? parseFloat(r.temperature).toFixed(1) : '—'}</td>
+      <td class="px-2 py-1">${r.num_staff ?? '—'}</td>
+      <td class="px-2 py-1">${r.num_customers_expected ?? '—'}</td>
+      <td class="px-2 py-1 fw-semibold">${r.actual_meals ?? '—'}</td>
+      <td class="px-2 py-1">${r.actual_waste != null ? parseFloat(r.actual_waste).toFixed(1) + ' kg' : '—'}</td>
+      <td class="px-2 py-1 text-muted">${r.predicted_meals != null ? Math.round(r.predicted_meals) : '—'}</td>
+      <td class="px-2 py-1 text-muted">${r.predicted_waste != null ? parseFloat(r.predicted_waste).toFixed(1) + ' kg' : '—'}</td>
+      <td class="px-2 py-1 text-muted">${r.created_at ? r.created_at.split('T')[0] : '—'}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+
+  renderPagination(totalPages);
+}
+
+function renderPagination(totalPages) {
+  const ul = document.getElementById('pagination-ul');
+  ul.innerHTML = '';
+
+  const makeLi = (label, page, active, disabled) => {
+    const li = document.createElement('li');
+    li.className = `page-item${active ? ' active' : ''}${disabled ? ' disabled' : ''}`;
+    li.innerHTML = `<a class="page-link" href="#">${label}</a>`;
+    if (!disabled && !active) {
+      li.querySelector('a').addEventListener('click', (e) => {
+        e.preventDefault();
+        currentPage = page;
+        renderTable();
+        window.scrollTo(0,0);
+      });
+    }
+    return li;
+  };
+
+  ul.appendChild(makeLi('‹', currentPage - 1, false, currentPage === 1));
+
+  const delta = 2;
+  let pages = [];
+  for (let i = Math.max(1, currentPage - delta); i <= Math.min(totalPages, currentPage + delta); i++) {
+    pages.push(i);
+  }
+  if (pages[0] > 1) {
+    ul.appendChild(makeLi('1', 1, false, false));
+    if (pages[0] > 2) ul.appendChild(makeLi('…', null, false, true));
+  }
+  pages.forEach(p => ul.appendChild(makeLi(p, p, p === currentPage, false)));
+  if (pages[pages.length-1] < totalPages) {
+    if (pages[pages.length-1] < totalPages - 1) ul.appendChild(makeLi('…', null, false, true));
+    ul.appendChild(makeLi(totalPages, totalPages, false, false));
+  }
+  ul.appendChild(makeLi('›', currentPage + 1, false, currentPage === totalPages));
+}
+
+// ---- Export CSV ----
+document.getElementById('btn-export-csv').addEventListener('click', () => {
+  const headers = ['Date','Day','Meal Type','Weather','Event','Temp','Staff','Expected','Actual Meals','Actual Waste','Pred Meals','Pred Waste','Created'];
+  const rows = filteredRecords.map(r => [
+    r.date || '',
+    DAYS_MAP[r.day_of_week] || '',
+    MEAL_MAP[r.meal_type] || '',
+    ['Sunny','Cloudy','Rainy'][r.weather] || '',
+    r.is_event ? 'Yes' : 'No',
+    r.temperature ?? '',
+    r.num_staff ?? '',
+    r.num_customers_expected ?? '',
+    r.actual_meals ?? '',
+    r.actual_waste ?? '',
+    r.predicted_meals != null ? Math.round(r.predicted_meals) : '',
+    r.predicted_waste != null ? parseFloat(r.predicted_waste).toFixed(1) : '',
+    r.created_at ? r.created_at.split('T')[0] : '',
+  ]);
+  const csvContent = [headers, ...rows].map(row => row.map(v => `"${v}"`).join(',')).join('\n');
+  const blob = new Blob([csvContent], { type: 'text/csv' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url;
+  a.download = `smartbite_history_${new Date().toISOString().split('T')[0]}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  window.showToast('📥 CSV exported!', 'success');
+});
+
+// ---- Init ----
+loadHistory();
+</script>
+{% endblock %}

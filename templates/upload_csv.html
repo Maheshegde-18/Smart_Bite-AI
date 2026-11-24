@@ -1,0 +1,261 @@
+{% extends "base.html" %}
+{% block title %}Upload CSV{% endblock %}
+{% block page_title %}Upload CSV{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-xl-9">
+
+    <!-- Upload card -->
+    <div class="card p-4 mb-4">
+      <h5 style="font-weight:700;color:#0f172a;" class="mb-1">
+        <i class="bi bi-cloud-upload me-2 text-primary"></i>Bulk Data Upload
+      </h5>
+      <p class="text-muted mb-4" style="font-size:13px;">Upload a CSV file to bulk-import historical meal and waste records.</p>
+
+      <!-- Drag & Drop area -->
+      <div id="drop-zone"
+           style="border: 2.5px dashed #cbd5e1; border-radius: 14px; padding: 48px 24px;
+                  text-align: center; cursor: pointer; transition: border-color 0.2s, background 0.2s;
+                  background: #f8fafc; position: relative;">
+        <div id="drop-content">
+          <i class="bi bi-cloud-upload-fill" style="font-size:48px;color:#38bdf8;display:block;margin-bottom:12px;"></i>
+          <div style="font-size:17px;font-weight:600;color:#0f172a;margin-bottom:6px;">Drag & Drop your CSV here</div>
+          <div style="font-size:13px;color:#64748b;margin-bottom:20px;">or click to browse files</div>
+          <button type="button" class="btn btn-outline-primary btn-sm px-4" onclick="document.getElementById('csv-file-input').click()">
+            <i class="bi bi-folder2-open me-2"></i>Browse File
+          </button>
+        </div>
+        <div id="file-selected-info" class="d-none" style="margin-top:8px;">
+          <i class="bi bi-file-earmark-spreadsheet-fill" style="font-size:40px;color:#10b981;display:block;margin-bottom:8px;"></i>
+          <div id="file-name-display" style="font-size:15px;font-weight:600;color:#0f172a;"></div>
+          <div id="file-size-display" style="font-size:12px;color:#64748b;margin-top:4px;"></div>
+          <button type="button" class="btn btn-link btn-sm text-muted mt-2 p-0" onclick="clearFile()">
+            <i class="bi bi-x-circle me-1"></i>Remove
+          </button>
+        </div>
+        <input type="file" id="csv-file-input" accept=".csv" style="display:none;" />
+      </div>
+
+      <!-- Action buttons -->
+      <div class="d-flex gap-2 mt-3 flex-wrap align-items-center">
+        <button type="button" id="btn-upload" class="btn btn-primary px-4" disabled>
+          <i class="bi bi-upload me-2"></i>Upload & Import
+        </button>
+        <button type="button" id="btn-download-sample" class="btn btn-outline-secondary px-4">
+          <i class="bi bi-download me-2"></i>Download Sample CSV
+        </button>
+      </div>
+
+      <!-- Progress bar -->
+      <div id="upload-progress" class="d-none mt-3">
+        <div class="d-flex justify-content-between mb-1">
+          <span style="font-size:12px;font-weight:600;color:#64748b;">Uploading…</span>
+          <span id="progress-pct" style="font-size:12px;color:#64748b;">0%</span>
+        </div>
+        <div class="progress" style="height:8px;border-radius:8px;">
+          <div id="progress-bar" class="progress-bar bg-primary" role="progressbar" style="width:0%;border-radius:8px;"></div>
+        </div>
+      </div>
+
+      <!-- Result area -->
+      <div id="upload-result" class="mt-3 d-none"></div>
+    </div>
+
+    <!-- Required columns card -->
+    <div class="card p-4">
+      <h6 style="font-weight:700;color:#0f172a;" class="mb-3">
+        <i class="bi bi-info-circle text-primary me-2"></i>Required CSV Columns
+      </h6>
+      <div class="row g-2">
+        {% set columns = [
+          ('date', 'Date', 'YYYY-MM-DD format', 'bi-calendar3', 'blue'),
+          ('day_of_week', 'Day of Week', '0=Mon, 1=Tue ... 6=Sun', 'bi-calendar-week', 'green'),
+          ('month', 'Month', 'Integer (1–12)', 'bi-calendar-month', 'orange'),
+          ('is_weekend', 'Is Weekend', '0=Weekday, 1=Weekend', 'bi-clock', 'purple'),
+          ('meal_type', 'Meal Type', '0=Breakfast, 1=Lunch, 2=Dinner', 'bi-egg-fried', 'green'),
+          ('weather', 'Weather', '0=Sunny, 1=Cloudy, 2=Rainy', 'bi-cloud-sun', 'orange'),
+          ('is_event', 'Is Event', '0 or 1 (special event flag)', 'bi-stars', 'purple'),
+          ('temperature', 'Temperature', 'Celsius (float)', 'bi-thermometer-half', 'blue'),
+          ('num_staff', 'Num Staff', 'Integer (1–100)', 'bi-people', 'green'),
+          ('num_customers_expected', 'Expected Customers', 'Integer (1–1000)', 'bi-person-check', 'orange'),
+          ('actual_meals', 'Actual Meals', 'Meals served (integer)', 'bi-check2-circle', 'purple'),
+          ('actual_waste', 'Actual Waste', 'Food waste in kg (float)', 'bi-trash', 'blue')
+        ] %}
+        {% for col, label, desc, icon, color in columns %}
+        <div class="col-md-6">
+          <div class="d-flex align-items-start gap-2 p-2 rounded-3" style="background:#f8fafc;">
+            <span class="mt-1" style="color:{{'#38bdf8' if color=='blue' else '#10b981' if color=='green' else '#f97316' if color=='orange' else '#8b5cf6'}};font-size:16px;">
+              <i class="bi {{ icon }}"></i>
+            </span>
+            <div>
+              <code style="font-size:12px;color:#0f172a;font-weight:600;">{{ col }}</code>
+              <div style="font-size:11px;color:#64748b;">{{ desc }}</div>
+            </div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+
+      <div class="alert alert-info mt-3 py-2 px-3" style="font-size:12px;border-radius:8px;">
+        <i class="bi bi-lightbulb me-1"></i>
+        <strong>Tip:</strong> Download the sample CSV to see the exact format expected. Additional columns are ignored.
+      </div>
+    </div>
+
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const dropZone  = document.getElementById('drop-zone');
+const fileInput = document.getElementById('csv-file-input');
+const btnUpload = document.getElementById('btn-upload');
+let selectedFile = null;
+
+// ---- Drag & Drop events ----
+dropZone.addEventListener('dragover', (e) => {
+  e.preventDefault();
+  dropZone.style.borderColor = '#38bdf8';
+  dropZone.style.background  = 'rgba(56,189,248,0.04)';
+});
+dropZone.addEventListener('dragleave', () => {
+  dropZone.style.borderColor = '#cbd5e1';
+  dropZone.style.background  = '#f8fafc';
+});
+dropZone.addEventListener('drop', (e) => {
+  e.preventDefault();
+  dropZone.style.borderColor = '#cbd5e1';
+  dropZone.style.background  = '#f8fafc';
+  const file = e.dataTransfer.files[0];
+  if (file) handleFile(file);
+});
+dropZone.addEventListener('click', (e) => {
+  if (e.target.closest('#file-selected-info')) return;
+  fileInput.click();
+});
+fileInput.addEventListener('change', () => {
+  if (fileInput.files[0]) handleFile(fileInput.files[0]);
+});
+
+function handleFile(file) {
+  if (!file.name.endsWith('.csv')) {
+    window.showToast('⚠️ Please select a CSV file.', 'warning');
+    return;
+  }
+  selectedFile = file;
+  document.getElementById('drop-content').classList.add('d-none');
+  document.getElementById('file-selected-info').classList.remove('d-none');
+  document.getElementById('file-name-display').textContent = file.name;
+  document.getElementById('file-size-display').textContent = formatBytes(file.size);
+  btnUpload.disabled = false;
+  document.getElementById('upload-result').classList.add('d-none');
+}
+
+function clearFile() {
+  selectedFile = null;
+  fileInput.value = '';
+  document.getElementById('drop-content').classList.remove('d-none');
+  document.getElementById('file-selected-info').classList.add('d-none');
+  btnUpload.disabled = true;
+  document.getElementById('upload-result').classList.add('d-none');
+  document.getElementById('upload-progress').classList.add('d-none');
+}
+
+function formatBytes(bytes) {
+  if (bytes < 1024) return bytes + ' B';
+  if (bytes < 1048576) return (bytes/1024).toFixed(1) + ' KB';
+  return (bytes/1048576).toFixed(2) + ' MB';
+}
+
+// ---- Upload ----
+btnUpload.addEventListener('click', async () => {
+  if (!selectedFile) return;
+
+  const progressDiv = document.getElementById('upload-progress');
+  const progressBar = document.getElementById('progress-bar');
+  const progressPct = document.getElementById('progress-pct');
+  const resultDiv   = document.getElementById('upload-result');
+
+  progressDiv.classList.remove('d-none');
+  resultDiv.classList.add('d-none');
+  btnUpload.disabled = true;
+  btnUpload.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Uploading…';
+
+  // Animate progress bar (fake progress until response)
+  let pct = 0;
+  const interval = setInterval(() => {
+    pct = Math.min(pct + Math.random() * 15, 85);
+    progressBar.style.width = pct + '%';
+    progressPct.textContent = Math.round(pct) + '%';
+  }, 200);
+
+  const formData = new FormData();
+  formData.append('file', selectedFile);
+
+  try {
+    const res = await fetch('/upload-csv', { method: 'POST', body: formData });
+    clearInterval(interval);
+    progressBar.style.width = '100%';
+    progressPct.textContent = '100%';
+
+    const result = await res.json();
+    setTimeout(() => progressDiv.classList.add('d-none'), 600);
+
+    resultDiv.classList.remove('d-none');
+    if (result.success || result.rows_inserted !== undefined) {
+      let html = `<div class="alert alert-success py-2 px-3" style="border-radius:8px;font-size:13px;">
+        <i class="bi bi-check-circle-fill me-2"></i>
+        <strong>Import complete!</strong> ${result.rows_inserted ?? 0} rows inserted.`;
+      if (result.errors && result.errors.length) {
+        html += `<ul class="mt-2 mb-0" style="font-size:12px;">`;
+        result.errors.slice(0,5).forEach(err => { html += `<li>${err}</li>`; });
+        if (result.errors.length > 5) html += `<li>…and ${result.errors.length - 5} more</li>`;
+        html += `</ul>`;
+      }
+      html += `</div>`;
+      resultDiv.innerHTML = html;
+      window.showToast(`✅ ${result.rows_inserted ?? 0} rows imported successfully!`, 'success');
+    } else {
+      resultDiv.innerHTML = `<div class="alert alert-danger py-2 px-3" style="border-radius:8px;font-size:13px;">
+        <i class="bi bi-x-circle-fill me-2"></i><strong>Upload failed:</strong> ${result.message || 'Unknown error'}</div>`;
+      window.showToast('❌ ' + (result.message || 'Upload failed'), 'danger');
+    }
+  } catch(err) {
+    clearInterval(interval);
+    progressDiv.classList.add('d-none');
+    resultDiv.classList.remove('d-none');
+    resultDiv.innerHTML = `<div class="alert alert-danger py-2 px-3" style="border-radius:8px;font-size:13px;">
+      <i class="bi bi-x-circle-fill me-2"></i><strong>Error:</strong> ${err.message}</div>`;
+    window.showToast('❌ Network error: ' + err.message, 'danger');
+  } finally {
+    btnUpload.disabled = false;
+    btnUpload.innerHTML = '<i class="bi bi-upload me-2"></i>Upload & Import';
+  }
+});
+
+// ---- Download sample CSV ----
+document.getElementById('btn-download-sample').addEventListener('click', () => {
+  const headers = 'date,day_of_week,month,is_weekend,meal_type,weather,is_event,temperature,num_staff,num_customers_expected,actual_meals,actual_waste';
+  const rows = [
+    '2024-01-15,0,1,0,1,0,0,28.5,12,220,195,8.2',
+    '2024-01-15,0,1,0,2,0,0,28.5,12,180,165,12.4',
+    '2024-01-16,1,1,0,0,1,0,22.0,10,150,130,6.1',
+    '2024-01-16,1,1,0,1,1,1,22.0,15,350,310,5.8',
+    '2024-01-17,2,1,0,2,2,0,19.5,11,200,170,18.3'
+  ];
+  const csv = [headers, ...rows].join('\n');
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url;
+  a.download = 'smartbite_sample.csv';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  window.showToast('📥 Sample CSV downloaded!', 'success');
+});
+</script>
+{% endblock %}

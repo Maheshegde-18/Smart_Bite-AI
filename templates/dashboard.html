@@ -1,0 +1,246 @@
+{% extends "base.html" %}
+{% block title %}Dashboard{% endblock %}
+{% block page_title %}Dashboard{% endblock %}
+
+{% block content %}
+<!-- KPI Cards Row -->
+<div class="row g-3 mb-4">
+  <!-- Total Records -->
+  <div class="col-xl-3 col-sm-6">
+    <div class="kpi-card">
+      <div class="kpi-icon bg-blue-soft"><i class="bi bi-database"></i></div>
+      <div class="kpi-value" id="kpi-total-records">—</div>
+      <div class="kpi-label">Total Records</div>
+      <div class="kpi-trend text-primary"><i class="bi bi-arrow-up-short"></i> All time</div>
+    </div>
+  </div>
+  <!-- Avg Daily Meals -->
+  <div class="col-xl-3 col-sm-6">
+    <div class="kpi-card">
+      <div class="kpi-icon bg-green-soft"><i class="bi bi-egg-fried"></i></div>
+      <div class="kpi-value" id="kpi-avg-meals">—</div>
+      <div class="kpi-label">Avg Daily Meals</div>
+      <div class="kpi-trend text-success" id="kpi-meals-trend"><i class="bi bi-arrow-up-short"></i> Per entry</div>
+    </div>
+  </div>
+  <!-- Avg Food Waste -->
+  <div class="col-xl-3 col-sm-6">
+    <div class="kpi-card">
+      <div class="kpi-icon bg-orange-soft"><i class="bi bi-trash"></i></div>
+      <div class="kpi-value" id="kpi-avg-waste">—</div>
+      <div class="kpi-label">Avg Food Waste (kg)</div>
+      <div class="kpi-trend" style="color:var(--orange)"><i class="bi bi-dash"></i> Avg per entry</div>
+    </div>
+  </div>
+  <!-- Waste Reduction % -->
+  <div class="col-xl-3 col-sm-6">
+    <div class="kpi-card">
+      <div class="kpi-icon bg-purple-soft"><i class="bi bi-graph-down-arrow"></i></div>
+      <div class="kpi-value" id="kpi-waste-reduction">—</div>
+      <div class="kpi-label">Waste Reduction %</div>
+      <div class="kpi-trend" style="color:var(--purple)"><i class="bi bi-arrow-down-short"></i> vs baseline</div>
+    </div>
+  </div>
+</div>
+
+<!-- Row 2: Meals demand line + Waste doughnut -->
+<div class="row g-3 mb-4">
+  <div class="col-xl-8">
+    <div class="chart-card h-100">
+      <div class="chart-title"><i class="bi bi-graph-up text-primary me-2"></i>Meals Demand – Last 7 Days</div>
+      <canvas id="mealsChart" height="110"></canvas>
+    </div>
+  </div>
+  <div class="col-xl-4">
+    <div class="chart-card h-100">
+      <div class="chart-title"><i class="bi bi-pie-chart text-warning me-2"></i>Waste by Meal Type</div>
+      <canvas id="wasteTypeChart" height="200"></canvas>
+    </div>
+  </div>
+</div>
+
+<!-- Row 3: Day-of-week bar + Waste trend -->
+<div class="row g-3">
+  <div class="col-xl-6">
+    <div class="chart-card">
+      <div class="chart-title"><i class="bi bi-bar-chart text-success me-2"></i>Avg Meals by Day of Week</div>
+      <canvas id="dayOfWeekChart" height="130"></canvas>
+    </div>
+  </div>
+  <div class="col-xl-6">
+    <div class="chart-card">
+      <div class="chart-title"><i class="bi bi-graph-down text-danger me-2"></i>Food Waste Trend – Last 7 Days</div>
+      <canvas id="wasteChart" height="130"></canvas>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(async function() {
+  let stats;
+  try {
+    const res = await fetch('/api/dashboard-stats');
+    stats = await res.json();
+  } catch(e) {
+    console.error('Dashboard stats fetch failed', e);
+    return;
+  }
+
+  // ---- KPI Cards ----
+  document.getElementById('kpi-total-records').textContent  = (stats.total_records  ?? 0).toLocaleString();
+  document.getElementById('kpi-avg-meals').textContent      = (stats.avg_meals       ?? 0).toFixed(1);
+  document.getElementById('kpi-avg-waste').textContent      = (stats.avg_waste_kg    ?? 0).toFixed(2);
+  document.getElementById('kpi-waste-reduction').textContent = (stats.waste_reduction_pct ?? 0).toFixed(1) + '%';
+
+  const r7 = stats.recent_7days || [];
+  const labels7 = r7.map(d => d.date);
+
+  // ---- Meals demand chart ----
+  const mealsCtx = document.getElementById('mealsChart').getContext('2d');
+  new Chart(mealsCtx, {
+    type: 'line',
+    data: {
+      labels: labels7,
+      datasets: [
+        {
+          label: 'Actual Meals',
+          data: r7.map(d => d.actual_meals),
+          borderColor: '#38bdf8',
+          backgroundColor: 'rgba(56,189,248,0.08)',
+          borderWidth: 2.5,
+          pointRadius: 4,
+          pointBackgroundColor: '#38bdf8',
+          fill: true,
+          tension: 0.4
+        },
+        {
+          label: 'Predicted Meals',
+          data: r7.map(d => d.predicted_meals),
+          borderColor: '#8b5cf6',
+          backgroundColor: 'rgba(139,92,246,0.06)',
+          borderWidth: 2.5,
+          pointRadius: 4,
+          pointBackgroundColor: '#8b5cf6',
+          borderDash: [5,3],
+          fill: false,
+          tension: 0.4
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { position: 'top', labels: { font: { family: 'Inter', size: 12 } } },
+        tooltip: { mode: 'index', intersect: false }
+      },
+      scales: {
+        x: { grid: { display: false }, ticks: { font: { family: 'Inter', size: 11 } } },
+        y: { grid: { color: '#f1f5f9' }, ticks: { font: { family: 'Inter', size: 11 } } }
+      }
+    }
+  });
+
+  // ---- Waste doughnut ----
+  const wbmt = stats.waste_by_meal_type || {};
+  const wasteTypeCtx = document.getElementById('wasteTypeChart').getContext('2d');
+  new Chart(wasteTypeCtx, {
+    type: 'doughnut',
+    data: {
+      labels: ['Breakfast', 'Lunch', 'Dinner'],
+      datasets: [{
+        data: [wbmt.breakfast || 0, wbmt.lunch || 0, wbmt.dinner || 0],
+        backgroundColor: ['#38bdf8', '#10b981', '#f97316'],
+        borderWidth: 2,
+        borderColor: '#fff',
+        hoverOffset: 6
+      }]
+    },
+    options: {
+      responsive: true,
+      cutout: '62%',
+      plugins: {
+        legend: { position: 'bottom', labels: { font: { family: 'Inter', size: 12 }, padding: 16 } },
+        tooltip: {
+          callbacks: {
+            label: ctx => ` ${ctx.label}: ${ctx.parsed.toFixed(2)} kg`
+          }
+        }
+      }
+    }
+  });
+
+  // ---- Day-of-week bar ----
+  const dowData = stats.meals_by_day_of_week || {};
+  const dowLabels = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+  const dowCtx = document.getElementById('dayOfWeekChart').getContext('2d');
+  new Chart(dowCtx, {
+    type: 'bar',
+    data: {
+      labels: dowLabels,
+      datasets: [{
+        label: 'Avg Meals',
+        data: dowLabels.map(d => dowData[d] || 0),
+        backgroundColor: ['#38bdf8','#10b981','#f97316','#8b5cf6','#f59e0b','#ef4444','#06b6d4'],
+        borderRadius: 6,
+        borderSkipped: false
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { display: false }, tooltip: { mode: 'index' } },
+      scales: {
+        x: { grid: { display: false }, ticks: { font: { family: 'Inter', size: 11 } } },
+        y: { grid: { color: '#f1f5f9' }, ticks: { font: { family: 'Inter', size: 11 } } }
+      }
+    }
+  });
+
+  // ---- Waste trend chart ----
+  const wasteCtx = document.getElementById('wasteChart').getContext('2d');
+  new Chart(wasteCtx, {
+    type: 'line',
+    data: {
+      labels: labels7,
+      datasets: [
+        {
+          label: 'Actual Waste (kg)',
+          data: r7.map(d => d.actual_waste),
+          borderColor: '#ef4444',
+          backgroundColor: 'rgba(239,68,68,0.08)',
+          borderWidth: 2.5,
+          pointRadius: 4,
+          pointBackgroundColor: '#ef4444',
+          fill: true,
+          tension: 0.4
+        },
+        {
+          label: 'Predicted Waste (kg)',
+          data: r7.map(d => d.predicted_waste),
+          borderColor: '#f97316',
+          backgroundColor: 'rgba(249,115,22,0.06)',
+          borderWidth: 2.5,
+          pointRadius: 4,
+          pointBackgroundColor: '#f97316',
+          borderDash: [5,3],
+          fill: false,
+          tension: 0.4
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { position: 'top', labels: { font: { family: 'Inter', size: 12 } } },
+        tooltip: { mode: 'index', intersect: false }
+      },
+      scales: {
+        x: { grid: { display: false }, ticks: { font: { family: 'Inter', size: 11 } } },
+        y: { grid: { color: '#f1f5f9' }, ticks: { font: { family: 'Inter', size: 11 } } }
+      }
+    }
+  });
+})();
+</script>
+{% endblock %}

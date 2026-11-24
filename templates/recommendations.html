@@ -1,0 +1,234 @@
+{% extends "base.html" %}
+{% block title %}AI Recommendations{% endblock %}
+{% block page_title %}AI Waste Reduction & Demand Recommendations{% endblock %}
+
+{% block content %}
+<!-- Top Header & Controls -->
+<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+  <div>
+    <h5 class="mb-1 text-slate-800 fw-bold">Smart Operational Insights</h5>
+    <p class="text-muted mb-0 small">
+      Real-time dynamic guidance computed from your historical kitchen logs, demand fluctuations, and linear regression patterns.
+    </p>
+  </div>
+  <div class="d-flex align-items-center gap-3">
+    <span class="text-muted small" id="last-updated-text">Updated: Just now</span>
+    <button id="btn-refresh-recs" class="btn btn-outline-secondary btn-sm d-flex align-items-center gap-2">
+      <i class="bi bi-arrow-clockwise" id="refresh-icon"></i>
+      <span>Refresh Insights</span>
+    </button>
+  </div>
+</div>
+
+<!-- Summary Snapshot Cards -->
+<div class="row g-3 mb-4">
+  <div class="col-xl-3 col-sm-6">
+    <div class="kpi-card">
+      <div class="kpi-icon bg-blue-soft"><i class="bi bi-clipboard-data"></i></div>
+      <div class="kpi-value" id="snap-records">—</div>
+      <div class="kpi-label">Analyzed Data Points</div>
+      <div class="kpi-trend text-primary"><i class="bi bi-check-circle"></i> Complete dataset</div>
+    </div>
+  </div>
+  <div class="col-xl-3 col-sm-6">
+    <div class="kpi-card">
+      <div class="kpi-icon bg-green-soft"><i class="bi bi-egg-fried"></i></div>
+      <div class="kpi-value" id="snap-meals">—</div>
+      <div class="kpi-label">Mean Meal Demand</div>
+      <div class="kpi-trend text-success"><i class="bi bi-people"></i> Per service window</div>
+    </div>
+  </div>
+  <div class="col-xl-3 col-sm-6">
+    <div class="kpi-card">
+      <div class="kpi-icon bg-orange-soft"><i class="bi bi-trash"></i></div>
+      <div class="kpi-value" id="snap-waste">—</div>
+      <div class="kpi-label">Mean Food Waste (kg)</div>
+      <div class="kpi-trend" style="color:var(--orange)"><i class="bi bi-pie-chart"></i> Unconsumed portion</div>
+    </div>
+  </div>
+  <div class="col-xl-3 col-sm-6">
+    <div class="kpi-card">
+      <div class="kpi-icon bg-purple-soft"><i class="bi bi-shield-check"></i></div>
+      <div class="kpi-value" id="snap-reduction">—</div>
+      <div class="kpi-label">Potential Waste Cut %</div>
+      <div class="kpi-trend" style="color:var(--purple)"><i class="bi bi-lightning"></i> AI optimization</div>
+    </div>
+  </div>
+</div>
+
+<!-- Main Section: Recommendations & Action Checklist -->
+<div class="row g-4">
+  <!-- Left column: Dynamic Recommendation Cards -->
+  <div class="col-lg-8">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+      <h6 class="fw-bold mb-0 text-slate-800"><i class="bi bi-lightbulb-fill text-warning me-2"></i>Prioritized Action Items</h6>
+      <span class="badge bg-secondary-subtle text-secondary border" id="recs-count-badge">0 Actions</span>
+    </div>
+
+    <!-- Recommendations Container -->
+    <div id="recommendations-container">
+      <div class="text-center py-5">
+        <div class="spinner-border text-primary" role="status"></div>
+        <div class="mt-2 text-muted small">Generating tailored insights...</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Right column: Best Practices & Summary Guide -->
+  <div class="col-lg-4">
+    <!-- Top 3 Kitchen Insights Panel -->
+    <div class="chart-card mb-4">
+      <h6 class="fw-bold mb-3"><i class="bi bi-stars text-primary me-2"></i>Key Operational Takeaways</h6>
+      <ul class="list-group list-group-flush small" id="key-takeaways-list">
+        <li class="list-group-item px-0 py-2 border-0 d-flex gap-2">
+          <i class="bi bi-check-circle-fill text-success flex-shrink-0 mt-1"></i>
+          <div><strong>Align Prep with Predictions:</strong> Check predicted meals 2 hours before prep window to avoid overcooking.</div>
+        </li>
+        <li class="list-group-item px-0 py-2 border-0 d-flex gap-2">
+          <i class="bi bi-check-circle-fill text-success flex-shrink-0 mt-1"></i>
+          <div><strong>Batch Cooking for Dinners:</strong> Dinner services exhibit higher variance; shift from full batching to two half-batches.</div>
+        </li>
+        <li class="list-group-item px-0 py-2 border-0 d-flex gap-2">
+          <i class="bi bi-check-circle-fill text-success flex-shrink-0 mt-1"></i>
+          <div><strong>Weather Contingency:</strong> Rain decreases footfall significantly; scale prep down immediately on rainy mornings.</div>
+        </li>
+      </ul>
+    </div>
+
+    <!-- Sustainability Impact Card -->
+    <div class="chart-card">
+      <h6 class="fw-bold mb-2"><i class="bi bi-flower1 text-success me-2"></i>Sustainability Goals</h6>
+      <p class="text-muted small mb-3">Food waste prevention directly drives ESG benchmarks and kitchen margin expansion.</p>
+      
+      <div class="mb-3">
+        <div class="d-flex justify-content-between small mb-1">
+          <span class="text-secondary">Monthly Waste Reduction Target</span>
+          <span class="fw-bold text-success">15.0%</span>
+        </div>
+        <div class="progress" style="height: 8px;">
+          <div class="progress-bar bg-success" role="progressbar" style="width: 78%;" aria-valuenow="78" aria-valuemin="0" aria-valuemax="100"></div>
+        </div>
+      </div>
+
+      <div class="p-3 rounded bg-light border small text-secondary">
+        <div class="fw-bold text-dark mb-1"><i class="bi bi-info-circle text-primary me-1"></i> How Recommendations Work</div>
+        Recommendations are generated deterministically by evaluating average food waste, day-of-week traffic drops, meal-type surplus, and model accuracy statistics.
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+async function loadRecommendations() {
+  const container = document.getElementById('recommendations-container');
+  const refreshIcon = document.getElementById('refresh-icon');
+  
+  if (refreshIcon) refreshIcon.classList.add('loading-spinner');
+
+  try {
+    const res = await fetch('/api/recommendations');
+    if (!res.ok) throw new Error('Failed to load recommendations');
+    const data = await res.json();
+
+    // Snapshot stats
+    const snap = data.stats_snapshot || {};
+    document.getElementById('snap-records').textContent = (snap.total_records ?? 0).toLocaleString();
+    document.getElementById('snap-meals').textContent = (snap.avg_meals ?? 0).toFixed(1);
+    document.getElementById('snap-waste').textContent = (snap.avg_waste_kg ?? 0).toFixed(2);
+    document.getElementById('snap-reduction').textContent = (snap.waste_reduction_pct ?? 0).toFixed(1) + '%';
+
+    const recs = data.recommendations || [];
+    document.getElementById('recs-count-badge').textContent = `${recs.length} Recommendations`;
+
+    if (recs.length === 0) {
+      container.innerHTML = `
+        <div class="p-4 text-center bg-white rounded border">
+          <i class="bi bi-check2-circle text-success fs-1"></i>
+          <h6 class="mt-2 fw-bold">Operations Look Optimal!</h6>
+          <p class="text-muted small mb-0">No urgent interventions required. Continue entering daily meal data.</p>
+        </div>
+      `;
+      return;
+    }
+
+    let html = '';
+    recs.forEach((r, idx) => {
+      let priorityClass = 'low';
+      let badgeBg = 'bg-success-subtle text-success border-success-subtle';
+      let icon = 'bi-check-circle';
+
+      if (r.priority === 'High') {
+        priorityClass = 'high';
+        badgeBg = 'bg-danger-subtle text-danger border-danger-subtle';
+        icon = 'bi-exclamation-octagon-fill text-danger';
+      } else if (r.priority === 'Medium') {
+        priorityClass = 'medium';
+        badgeBg = 'bg-warning-subtle text-warning border-warning-subtle';
+        icon = 'bi-exclamation-triangle-fill text-warning';
+      } else if (r.priority === 'Info') {
+        priorityClass = 'medium';
+        badgeBg = 'bg-info-subtle text-info border-info-subtle';
+        icon = 'bi-info-circle-fill text-info';
+      } else {
+        icon = 'bi-check-circle-fill text-success';
+      }
+
+      html += `
+        <div class="rec-card ${priorityClass}">
+          <div class="d-flex justify-content-between align-items-start mb-2">
+            <div class="d-flex align-items-center gap-2">
+              <i class="bi ${icon} fs-5"></i>
+              <h6 class="fw-bold mb-0 text-slate-800">${escapeHtml(r.title)}</h6>
+            </div>
+            <div class="d-flex gap-2 align-items-center">
+              <span class="badge ${badgeBg} border px-2 py-1">${escapeHtml(r.priority)} Priority</span>
+              <span class="badge bg-light text-secondary border px-2 py-1">${escapeHtml(r.category)}</span>
+            </div>
+          </div>
+          <p class="text-secondary small mb-2">${escapeHtml(r.description)}</p>
+          <div class="p-2 rounded bg-light border small text-dark d-flex align-items-center gap-2">
+            <i class="bi bi-arrow-right-circle text-primary"></i>
+            <span><strong>Recommended Action:</strong> ${escapeHtml(r.action)}</span>
+          </div>
+        </div>
+      `;
+    });
+
+    container.innerHTML = html;
+    document.getElementById('last-updated-text').textContent = 'Updated: ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
+  } catch (err) {
+    console.error('Error in recommendations:', err);
+    container.innerHTML = `
+      <div class="p-4 text-center bg-white rounded border text-danger">
+        <i class="bi bi-exclamation-circle fs-2"></i>
+        <div class="mt-2 fw-medium">Could not load recommendations</div>
+        <div class="text-muted small">Please verify database connectivity and try again.</div>
+      </div>
+    `;
+    if (window.showToast) window.showToast('Failed to load recommendations', 'danger');
+  } finally {
+    if (refreshIcon) refreshIcon.classList.remove('loading-spinner');
+  }
+}
+
+function escapeHtml(str) {
+  if (!str) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
+document.getElementById('btn-refresh-recs').addEventListener('click', () => {
+  loadRecommendations();
+  if (window.showToast) window.showToast('Refreshing recommendations...', 'info');
+});
+
+document.addEventListener('DOMContentLoaded', loadRecommendations);
+</script>
+{% endblock %}
